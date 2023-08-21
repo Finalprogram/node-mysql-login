@@ -1,13 +1,3 @@
-/*comandos npm
-npm init
-npm instal nodemon -g 
-npm install -- save express
-npm install express-session
-npm install --save body-parser
-npm install --save mysql
-npm install ejs -save
-*/
-
 //require do express e do session
 const express = require('express');
 const session = require("express-session");
@@ -18,8 +8,7 @@ const app = express();
 const bodyParser = require("body-parser");
 
 //require do mysql
-const mysql = require("mysql"); 
-const { resolveSoa } = require('dns');
+const { Pool } = require('pg');
 
 //criando a sessão
 app.use(session({secret: "ssshhhhh"}));
@@ -37,16 +26,21 @@ app.use(bodyParser.json());
 
 
 //conexão com banco mysql
-function conectiondb(){
-    var con = mysql.createConnection({
-        host: 'localhost', // O host do banco. Ex: localhost
-        user: 'root', // Um usuário do banco. Ex: user 
-        password: '', // A senha do usuário. Ex: user123
-        database: 'dblogin' // A base de dados a qual a aplicação irá se conectar, deve ser a mesma onde foi executado o Código 1. Ex: node_mysql
-    });
-
+function connectToDB() {
+    const pool = new Pool({
+        user: 'postgres',
+        host: 'localhost',
+        database: 'now',
+        password: 'inova@613188#',
+        port: 5432, 
+      });
+  
+    return pool;
+  }{
+  
+    const pool = connectToDB();
     //verifica conexao com o banco
-    con.connect((err) => {
+    pool.connect((err) => {
         if (err) {
             console.log('Erro connecting to database...', err)
             return
@@ -54,11 +48,10 @@ function conectiondb(){
         console.log('Connection established!')
     });
 
-    return con;
+    return pool;
 }
 
 
-//rota padrao
 app.get('/', (req, res) => {
     var message = ' ';
     req.session.destroy();
@@ -77,9 +70,9 @@ app.get("/views/home", function (req, res){
     
     //verifica se existe seção ativa
     if (req.session.user){
-        var con = conectiondb();
+        var con = connectToDB();
         var query2 = 'SELECT * FROM users WHERE email LIKE ?';
-        con.query(query2, [req.session.user], function (err, results){
+        pool.query(query2, [req.session.user], function (err, results){
             res.render('views/home', {message:results});
             
         });
@@ -104,18 +97,18 @@ app.post('/register', function (req, res){
     var email = req.body.email;
     var idade = req.body.idade;
 
-    var con = conectiondb();
+    var con = connectToDB();
 
     var queryConsulta = 'SELECT * FROM users WHERE email LIKE ?';
 
-    con.query(queryConsulta, [email], function (err, results){
+    pool.query(queryConsulta, [email], function (err, results){
         if (results.length > 0){            
             var message = 'E-mail já cadastrado';
             res.render('views/registro', { message: message });
         }else{
             var query = 'INSERT INTO users VALUES (DEFAULT, ?, ?, ?, ?)';
 
-            con.query(query, [username, email, idade, pass], function (err, results){
+            pool.query(query, [username, email, idade, pass], function (err, results){
                 if (err){
                     throw err;
                 }else{
@@ -134,7 +127,7 @@ app.post('/log', function (req, res){
     var email = req.body.email;
     var pass = req.body.pass;
     //conexão com banco de dados
-    var con = conectiondb();
+    var con = connectToDB();
     //query de execução
     var query = 'SELECT * FROM users WHERE pass = ? AND email LIKE ?';
     
@@ -161,7 +154,7 @@ app.post('/update', function (req, res){
     var username = req.body.nome;
     var idade = req.body.idade;
     //conexão com banco de dados
-    var con = conectiondb();
+    var con = connectToDB();
     //query de execução
     var query = 'UPDATE users SET username = ?, pass = ?, idade = ? WHERE email LIKE ?';
     
@@ -183,7 +176,7 @@ app.post('/delete', function (req, res){
     var username = req.body.nome;
     
     //conexão com banco de dados
-    var con = conectiondb();
+    var con = connectToDB();
     //query de execução
     var query = 'DELETE FROM users WHERE email LIKE ?';
     
